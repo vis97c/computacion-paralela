@@ -14,7 +14,7 @@ public final class ReciprocalArraySum {
 	private ReciprocalArraySum() {}
 
 	/**
-	 * ForkJoinPool estático para reutilizar hilos y mejorar el rendimiento.
+	 * ForkJoinPool estático para reutilizar hilos y mejorar el desempeño en las pruebas repetitivas.
 	 */
 	private static ForkJoinPool pool;
 	private static int poolTasks = -1;
@@ -179,12 +179,14 @@ public final class ReciprocalArraySum {
 			input
 		);
 
-		final ForkJoinPool currentPool = getPool(2);
-		currentPool.execute(left);
-		currentPool.execute(right);
-
-		left.join();
-		right.join();
+		getPool(2).invoke(new RecursiveAction() {
+			@Override
+			protected void compute() {
+				left.fork();
+				right.compute();
+				left.join();
+			}
+		});
 
 		return left.getValue() + right.getValue();
 	}
@@ -210,14 +212,15 @@ public final class ReciprocalArraySum {
 			);
 		}
 
-		final ForkJoinPool currentPool = getPool(numTasks);
-		for (int i = 0; i < numTasks; i++) {
-			currentPool.execute(tasks[i]);
-		}
+		getPool(numTasks).invoke(new RecursiveAction() {
+			@Override
+			protected void compute() {
+				invokeAll(tasks);
+			}
+		});
 
 		double total = 0;
 		for (int i = 0; i < numTasks; i++) {
-			tasks[i].join();
 			total += tasks[i].getValue();
 		}
 
