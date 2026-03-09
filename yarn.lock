@@ -72,15 +72,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ejercicio_1@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "ejercicio_1@workspace:."
-  dependencies:
-    prettier: "npm:^3.8.1"
-    prettier-plugin-java: "npm:^2.8.1"
-  languageName: unknown
-  linkType: soft
-
 "java-parser@npm:3.0.1":
   version: 3.0.1
   resolution: "java-parser@npm:3.0.1"
@@ -112,6 +103,15 @@ __metadata:
   checksum: 10c0/d8cbea072bb08655bb4c989da418994b073a608dffa608b09ac04b43a791b12aeae7cd7ad919aa4c925f33b48490b5cfe6c1f71d827956071dae2e7bb3a6b74c
   languageName: node
   linkType: hard
+
+"parallel-computing@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "parallel-computing@workspace:."
+  dependencies:
+    prettier: "npm:^3.8.1"
+    prettier-plugin-java: "npm:^2.8.1"
+  languageName: unknown
+  linkType: soft
 
 "prettier-plugin-java@npm:^2.8.1":
   version: 2.8.1

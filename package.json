@@ -1,7 +1,10 @@
 {
-  "name": "ejercicio_1",
+  "name": "parallel-computing",
   "packageManager": "yarn@4.10.3",
-  "dependencies": {
+  "workspaces": [
+    "ejercicio_1"
+  ],
+  "devDependencies": {
     "prettier": "^3.8.1",
     "prettier-plugin-java": "^2.8.1"
   }
