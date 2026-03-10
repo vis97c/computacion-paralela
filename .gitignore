@@ -16,3 +16,7 @@ target
 
 #!.yarn/cache
 .pnp.*
+
+# Java
+*.class
+
