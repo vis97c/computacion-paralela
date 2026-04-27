@@ -203,16 +203,28 @@ public final class ReciprocalArraySum {
 		);
 
 		// Se inicia el cálculo paralelo del arreglo
-		getPool(2).invoke(
+		// getPool(2).invoke(
+		// 	new RecursiveAction() {
+		// 		/**
+		// 		 * Combina las dos tareas en una sola tarea.
+		// 		 */
+		// 		@Override
+		// 		protected void compute() {
+		// 			left.fork(); // Divide el trabajo en dos tareas más pequeñas
+		// 			right.compute();
+		// 			left.join(); // Espera a que la tarea izquierda termine
+		// 		}
+		// 	}
+		// );
+
+		// Usar commonPool, este tiene el mismo número de hilos que los procesadores disponibles
+		ForkJoinPool.commonPool().invoke(
 			new RecursiveAction() {
-				/**
-				 * Combina las dos tareas en una sola tarea.
-				 */
 				@Override
 				protected void compute() {
-					left.fork(); // Divide el trabajo en dos tareas más pequeñas
+					left.fork();
 					right.compute();
-					left.join(); // Espera a que la tarea izquierda termine
+					left.join();
 				}
 			}
 		);
@@ -244,12 +256,22 @@ public final class ReciprocalArraySum {
 		}
 
 		// Inicia el cálculo paralelo del arreglo
-		getPool(numTasks).invoke(
+		// getPool(numTasks).invoke(
+		// 	new RecursiveAction() {
+		// 		/**
+		// 		 * invokeAll() divide el trabajo en tareas más pequeñas
+		// 		 * Se computan las tareas en paralelo utilizando el pool de hilos
+		// 		 */
+		// 		@Override
+		// 		protected void compute() {
+		// 			invokeAll(tasks);
+		// 		}
+		// 	}
+		// );
+
+		// Usar commonPool, este tiene el número de hilos igual a los procesadores disponibles
+		ForkJoinPool.commonPool().invoke(
 			new RecursiveAction() {
-				/**
-				 * invokeAll() divide el trabajo en tareas más pequeñas
-				 * Se computan las tareas en paralelo utilizando el pool de hilos
-				 */
 				@Override
 				protected void compute() {
 					invokeAll(tasks);
