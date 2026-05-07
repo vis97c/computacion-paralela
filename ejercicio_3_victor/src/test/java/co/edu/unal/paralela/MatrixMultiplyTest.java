@@ -121,6 +121,7 @@ public class MatrixMultiplyTest extends TestCase {
         final String errMsg = String.format("It was expected that the parallel implementation would run at " +
                 "least %fx faster, but it only achieved %fx speedup", minimalExpectedSpeedup, speedup);
         assertTrue(errMsg, speedup >= minimalExpectedSpeedup);
+        System.out.println("Speedup: " + speedup);
     }
 
     /**
@@ -134,5 +135,6 @@ public class MatrixMultiplyTest extends TestCase {
         final String errMsg = String.format("It was expected that the parallel implementation would run at " +
                 "least %fx faster, but it only achieved %fx speedup", minimalExpectedSpeedup, speedup);
         assertTrue(errMsg, speedup >= minimalExpectedSpeedup);
+        System.out.println("Speedup: " + speedup);
     }
 }
