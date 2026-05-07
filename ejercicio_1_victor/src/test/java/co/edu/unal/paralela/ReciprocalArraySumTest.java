@@ -121,6 +121,10 @@ public class ReciprocalArraySumTest extends TestCase {
 			minimalExpectedSpeedup,
 			speedup
 		);
+
+		// System.out.println("Expected speedup Simple 2M: " + minimalExpectedSpeedup);
+		// System.out.println("Real speedup Simple 2M: " + speedup);
+
 		assertTrue(errMsg, speedup >= minimalExpectedSpeedup);
 	}
 
@@ -136,6 +140,10 @@ public class ReciprocalArraySumTest extends TestCase {
 			minimalExpectedSpeedup,
 			speedup
 		);
+
+		// System.out.println("Expected speedup Simple 200M: " + minimalExpectedSpeedup);
+		// System.out.println("Real speedup Simple 200M: " + speedup);
+
 		assertTrue(errMsg, speedup >= minimalExpectedSpeedup);
 	}
 
@@ -152,6 +160,11 @@ public class ReciprocalArraySumTest extends TestCase {
 			minimalExpectedSpeedup,
 			speedup
 		);
+		
+
+		// System.out.println("Expected speedup manyTask 2M: " + minimalExpectedSpeedup);
+		// System.out.println("Real speedup manyTask 2M: " + speedup);
+
 		assertTrue(errMsg, speedup >= minimalExpectedSpeedup);
 	}
 
@@ -168,6 +181,11 @@ public class ReciprocalArraySumTest extends TestCase {
 			minimalExpectedSpeedup,
 			speedup
 		);
+		
+
+		// System.out.println("Expected speedup manyTask 200M: " + minimalExpectedSpeedup);
+		// System.out.println("Real speedup manyTask 200M: " + speedup);
+
 		assertTrue(errMsg, speedup >= minimalExpectedSpeedup);
 	}
 }
