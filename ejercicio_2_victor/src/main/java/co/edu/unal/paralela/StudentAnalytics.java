@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Arrays;
 import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 /**
  * Una clase 'envoltorio' (wrapper) para varios métodos analíticos.
@@ -45,7 +47,11 @@ public final class StudentAnalytics {
      */
     public double averageAgeOfEnrolledStudentsParallelStream(
             final Student[] studentArray) {
-        throw new UnsupportedOperationException();
+        return Arrays.parallelStream(studentArray)
+                .filter(s -> s.checkIsCurrent())
+                .mapToDouble(s -> s.getAge())
+                .average()
+                .orElse(0.0);
     }
 
     /**
@@ -98,7 +104,9 @@ public final class StudentAnalytics {
      */
     public String mostCommonFirstNameOfInactiveStudentsParallelStream(
             final Student[] studentArray) {
-        throw new UnsupportedOperationException();
+        return Arrays.parallelStream(studentArray)
+                .filter(s -> !s.checkIsCurrent())
+                .reduce((s1, s2) -> s1.getFirstName().compareTo(s2.getFirstName()) > 0 ? s1 : s2).get().getFirstName();
     }
 
     /**
@@ -133,6 +141,8 @@ public final class StudentAnalytics {
      */
     public int countNumberOfFailedStudentsOlderThan20ParallelStream(
             final Student[] studentArray) {
-        throw new UnsupportedOperationException();
+        return (int) Arrays.parallelStream(studentArray)
+                .filter(s -> !s.checkIsCurrent() && s.getAge() > 20 && s.getGrade() < 65)
+                .count();
     }
 }
