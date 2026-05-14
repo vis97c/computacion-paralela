@@ -107,62 +107,45 @@ public final class OneDimAveragingPhaser {
             final double[] myNew, final double[] myVal, final int n,
             final int tasks) {
 
-        Phaser[] phs = new Phaser[tasks];
+        final Phaser ph = new Phaser(tasks);
         Thread[] threads = new Thread[tasks];
 
         for (int ii = 0; ii < tasks; ii++) {
             final int i = ii;
 
-            phs[i] = new Phaser(1);
             threads[ii] = new Thread(() -> {
                 double[] threadPrivateMyVal = myVal;
                 double[] threadPrivateMyNew = myNew;
 
+                final int chunkSize = n / tasks;
+                final int left = i * chunkSize + 1;
+                final int right = (i + 1) * chunkSize;
+
                 for (int iter = 0; iter < iterations; iter++) {
-                    // Calculamos los límites del bloque para esta tarea
-                    final int left = i * (n / tasks) + 1;
-                    final int right = (i + 1) * (n / tasks);
-
-                    // 1. Cómputo de elementos internos:
-                    // Estos elementos no dependen de los vecinos en la iteración actual,
-                    // por lo que podemos calcularlos mientras esperamos la sincronización.
-                    for (int j = left + 1; j <= right - 1; j++) {
-                        threadPrivateMyNew[j] = (threadPrivateMyVal[j - 1]
-                                + threadPrivateMyVal[j + 1]) / 2.0;
-                    }
-
-                    // 2. Barrera difusa (Fuzzy Barrier):
-                    // Esperamos a que los vecinos hayan terminado de leer sus valores
-                    // de la iteración anterior antes de computar nuestros bordes y
-                    // eventualmente intercambiar los arreglos.
-                    if (iter > 0) {
-                        if (i > 0) {
-                            phs[i - 1].awaitAdvance(iter - 1);
-                        }
-                        if (i + 1 < tasks) {
-                            phs[i + 1].awaitAdvance(iter - 1);
-                        }
-                    }
-
-                    // 3. Cómputo de elementos de borde:
-                    // Ahora que los vecinos terminaron la iteración anterior, es seguro
-                    // leer los valores de borde necesarios.
+                    // 1. Compute border elements first (neighbors depend on these for next iter)
                     threadPrivateMyNew[left] = (threadPrivateMyVal[left - 1]
-                            + threadPrivateMyVal[left + 1]) / 2.0;
+                            + threadPrivateMyVal[left + 1]) * 0.5;
 
                     if (left < right) {
                         threadPrivateMyNew[right] = (threadPrivateMyVal[right - 1]
-                                + threadPrivateMyVal[right + 1]) / 2.0;
+                                + threadPrivateMyVal[right + 1]) * 0.5;
                     }
 
-                    // 4. Notificar llegada:
-                    // Indicamos que hemos terminado de escribir en el arreglo 'next'
-                    // y de leer del arreglo 'curr' para esta iteración.
-                    phs[i].arrive();
+                    // 2. Arrive: Signal we've produced our borders. 
+                    // Others can now proceed with their fuzzy phase.
+                    final int phase = ph.arrive();
 
-                    // 5. Intercambio de arreglos para la siguiente iteración
+                    // 3. Compute interior elements (Fuzzy region)
+                    for (int j = left + 1; j <= right - 1; j++) {
+                        threadPrivateMyNew[j] = (threadPrivateMyVal[j - 1]
+                                + threadPrivateMyVal[j + 1]) * 0.5;
+                    }
+
+                    // 4. Wait for everyone to finish their borders
+                    ph.awaitAdvance(phase);
+
+                    // 5. Swap
                     double[] temp = threadPrivateMyNew;
-
                     threadPrivateMyNew = threadPrivateMyVal;
                     threadPrivateMyVal = temp;
                 }
@@ -171,7 +154,6 @@ public final class OneDimAveragingPhaser {
             threads[ii].start();
         }
 
-        // Esperamos a que todos los hilos terminen
         for (int ii = 0; ii < tasks; ii++) {
             try {
                 threads[ii].join();
