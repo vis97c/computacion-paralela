@@ -43,7 +43,7 @@ public final class MatrixMultiply {
      * @param N tamaño de las matrices de entrada
      */
     public static void parMatrixMultiply(double[][] A, double B[][], double[][] C, int n) {
-        // // forall2d (x3)
+        // // Implementacion 1: forall2d (x3)
         // forall2d(0, n - 1, 0, n - 1, (i, j) -> {
         // C[i][j] = 0;
         // for (int k = 0; k < n; k++) {
@@ -51,7 +51,7 @@ public final class MatrixMultiply {
         // }
         // });
 
-        // // Con acumulador local (x4)
+        // // Implementacion 2: Con acumulador local (x4)
         // forall2dChunked(0, n - 1, 0, n - 1, (i, j) -> {
         // double sum = 0;
 
@@ -62,7 +62,7 @@ public final class MatrixMultiply {
         // C[i][j] = sum;
         // });
 
-        // Reordenar bucles i, k, j (x24)
+        // Implementacion 3: Reordenar bucles i, k, j (x24)
         forall2dChunked(0, n - 1, 0, n - 1, (i, k) -> {
             double temp = A[i][k];
 

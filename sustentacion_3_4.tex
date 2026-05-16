@@ -1,0 +1,312 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Paquetes Esenciales ---
+\usepackage[spanish,es-tabla]{babel} % Idioma español
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry} % Márgenes
+\geometry{top=2.5cm, bottom=2.5cm, left=3cm, right=3cm}
+
+
+
+
+% --- Matemáticas y Ciencia ---
+\usepackage{amsmath, amsfonts, amssymb} % Ecuaciones avanzadas
+\usepackage{float}
+\usepackage{siunitx} % Unidades del sistema internacional
+\usepackage{physics} % Notación de física y señales
+
+% --- Gráficos y Tablas ---
+\usepackage{graphicx} % Inserción de imágenes
+\usepackage{booktabs} % Tablas con estilo profesional
+\usepackage{caption}
+\usepackage{subcaption}
+
+% --- Código de Programación ---
+\usepackage{listings}
+\usepackage{xcolor}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.8,0.1,0.1}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\lstset{
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    captionpos=b,
+    numbers=left,
+    showstringspaces=false
+}
+\renewcommand{\lstlistingname}{Código}
+
+% --- Enlaces y Referencias ---
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=red, urlcolor=cyan]{hyperref}
+
+% --- Configuración de Título ---
+\title{
+    \vspace{-2cm}
+    \textbf{Prácticas paralelismo en ciclos y basados en flujos de datos} \\
+    \vspace{0.5cm}
+    \large Computación paralela y distribuida
+}
+\author{
+    Víctor Iván Saa Caicedo \\
+    Anderson David Morales Chila\\
+    \texttt{amoralesch@unal.edu.co}
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Práctica N° 3}
+\subsection{Descripción}
+Está práctica consistía en implementar un algoritmo de \textit{\textbf{multiplicación de matrices en paralelo}}, usando la librería pcdp de la Universidad de Rice en Java, así poniendo en practica los conocimiento de paralelismo en ciclos.
+\subsection{Código}
+En esta sección se presentan las tres aproximaciones utilizadas para paralelizar la multiplicación de matrices $C = A \times B$.
+
+\subsubsection{Implementación 1: Paralelismo básico con \texttt{forall2d}}
+Esta versión utiliza la construcción más simple de paralelismo para los dos bucles externos.
+
+\begin{lstlisting}[language=Java, caption=Multiplicación de matrices con forall2d.]
+forall2d(0, n - 1, 0, n - 1, (i, j) -> {
+    C[i][j] = 0;
+    for (int k = 0; k < n; k++) {
+        C[i][j] += A[i][k] * B[k][j];
+    }
+});
+\end{lstlisting}
+
+\textbf{Explicación:} Se paralelizan los índices $i$ y $j$, lo que significa que cada cálculo de un elemento individual $C[i][j]$ puede ejecutarse en paralelo. Sin embargo, esta implementación puede sufrir de una alta sobrecarga (\textit{overhead}) debido a la creación de una gran cantidad de tareas pequeñas si la matriz es extensa.
+
+\subsubsection{Implementación 2: Uso de \texttt{forall2dChunked} y acumulador local}
+Para mejorar la eficiencia, se agrupan las tareas y se reduce el acceso a memoria compartida.
+
+\begin{lstlisting}[language=Java, caption=Multiplicación de matrices con chunking y acumulador.]
+forall2dChunked(0, n - 1, 0, n - 1, (i, j) -> {
+    double sum = 0;
+    for (int k = 0; k < n; k++) {
+        sum += A[i][k] * B[k][j];
+    }
+    C[i][j] = sum;
+});
+\end{lstlisting}
+
+\textbf{Explicación:} \texttt{forall2dChunked} reduce el \textit{overhead} al agrupar varias iteraciones de $i$ y $j$ en un solo hilo de ejecución (\textit{chunk}). Además, el uso de una variable local \texttt{sum} evita escrituras constantes en la matriz $C$, lo cual mejora el rendimiento al trabajar principalmente con registros o memoria caché local.
+
+\subsubsection{Implementación 3: Reordenamiento de bucles (IKJ) para eficiencia de caché}
+Esta es la versión más optimizada, cambiando el orden de los bucles para favorecer el acceso secuencial a la memoria.
+
+\begin{lstlisting}[language=Java, caption=Multiplicación de matrices con reordenamiento IKJ.]
+forall2dChunked(0, n - 1, 0, n - 1, (i, k) -> {
+    double temp = A[i][k];
+    for (int j = 0; j < n; j++) {
+        C[i][j] += temp * B[k][j];
+    }
+});
+\end{lstlisting}
+
+\textbf{Explicación:} Al usar el orden \textbf{IKJ}, el bucle más interno recorre el índice $j$. Esto permite que tanto $C[i][j]$ como $B[k][j]$ se accedan de forma contigua en memoria (por filas), aprovechando al máximo la línea de caché del procesador. A diferencia del orden tradicional \textbf{IJK}, donde $B[k][j]$ se accede por columnas provocando constantes fallos de caché (\textit{cache misses}), esta versión reduce drásticamente el tiempo de ejecución.
+
+\subsection{Resultados de las ejecuciones}
+% Este apartado se deja libre para los resultados de las pruebas de rendimiento.
+
+\subsection{Posibles mejoras}
+Para la Implementación 3, que ya es bastante eficiente, se podrían aplicar las siguientes optimizaciones adicionales:
+
+\begin{itemize}
+    \item \textbf{Tiling (Bloqueo):} Dividir las matrices en sub-bloques más pequeños que quepan completamente en la caché L1 o L2. Esto maximiza la reutilización de datos antes de que sean desalojados de la caché.
+    \item \textbf{Vectorización (SIMD):} Asegurar que el compilador o la JVM utilicen instrucciones SIMD (\textit{Single Instruction, Multiple Data}) para procesar múltiples elementos de punto flotante en un solo ciclo de reloj en el bucle interno $j$.
+    \item \textbf{Transposición previa de B:} Si bien el orden IKJ ya es eficiente, transponer la matriz $B$ antes de la multiplicación puede ayudar en ciertos arquitecturas a garantizar un acceso totalmente lineal en todos los patrones de uso.
+    \item \textbf{Ajuste del tamaño de Chunk:} Realizar un ajuste fino (\textit{fine-tuning}) del parámetro de \textit{chunking} dependiendo del número de núcleos lógicos disponibles en el sistema para evitar el desbalanceo de carga (\textit{load imbalance}).
+\end{itemize}
+
+
+\section{Práctica N° 4}
+\subsection{Descripción}
+Está práctica consistía en implementar el algoritmo de \textit{\textbf{cálculo del promedio de manera iterativa unidimensional}}, usando Phasers en Java para poner en practica los conocimientos de sincronización de flujos de datos y Pipelining.
+
+\subsection{Código}
+Para está práctica se usaron dos formas de implementación de phasers.
+
+\subsubsection{Implementación 1}
+\begin{lstlisting}[language=Java, caption=Primera implementación para la práctica 4., label={cod:pr4-1}]
+public static void runParallelFuzzyBarrier(final int iterations, final double[] myNew, final double[] myVal, final int n, final int tasks) {
+
+        final Phaser ph = new Phaser(tasks);
+        Thread[] threads = new Thread[tasks];
+
+        for (int ii = 0; ii < tasks; ii++) {
+            final int i = ii;
+
+            threads[ii] = new Thread(() -> {
+                double[] threadPrivateMyVal = myVal;
+                double[] threadPrivateMyNew = myNew;
+
+                final int chunkSize = n / tasks;
+                final int left = i * chunkSize + 1;
+                final int right = (i + 1) * chunkSize;
+
+                for (int iter = 0; iter < iterations; iter++) {
+                    // 1. Compute border elements first (neighbors depend on these for next iter)
+                    threadPrivateMyNew[left] = (threadPrivateMyVal[left - 1]
+                            + threadPrivateMyVal[left + 1]) * 0.5;
+
+                    if (left < right) {
+                        threadPrivateMyNew[right] = (threadPrivateMyVal[right - 1]
+                                + threadPrivateMyVal[right + 1]) * 0.5;
+                    }
+
+                    // 2. Arrive: Signal we've produced our borders. 
+                    // Others can now proceed with their fuzzy phase.
+                    final int phase = ph.arrive();
+
+                    // 3. Compute interior elements (Fuzzy region)
+                    for (int j = left + 1; j <= right - 1; j++) {
+                        threadPrivateMyNew[j] = (threadPrivateMyVal[j - 1]
+                                + threadPrivateMyVal[j + 1]) * 0.5;
+                    }
+
+                    // 4. Wait for everyone to finish their borders
+                    ph.awaitAdvance(phase);
+
+                    // 5. Swap
+                    double[] temp = threadPrivateMyNew;
+                    threadPrivateMyNew = threadPrivateMyVal;
+                    threadPrivateMyVal = temp;
+                }
+            });
+
+            threads[ii].start();
+        }
+
+        for (int ii = 0; ii < tasks; ii++) {
+            try {
+                threads[ii].join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+\end{lstlisting}
+Implementa un cálculo del promedio de manera iterativa unidimensional usando múltiples hilos que se sincronizan con una barrera difusa . La idea es actualizar un arreglo de $n$ elementos durante $iterations$ iteraciones, donde cada elemento nuevo se calcula como el promedio de sus vecinos. \newline \
+
+\textit{\textbf{Phaser}} es la clase de Java que permite construir barreras de sincronización flexibles. Al construirlo con \textit{tasks}, le dice que $tasks$ hilos participarán en cada fase. Adicionalmente, se tiene un arreglo con $tasks$ hilos. \newline \
+
+El arreglo de $n$ elementos se divide en partes de longitud $chunckSize$. El hilo $i$ es responsable del segmento $[left, right]$. Dentro del \textit{for} de la línea 17 hay 5 pasos clave por iteración:
+
+\begin{enumerate}
+    \item Calcular los elementos borde.
+
+        \begin{lstlisting}[language=Java, caption=Calculo de elementos borde., label={cod:bord}]
+threadPrivateMyNew[left] = (threadPrivateMyVal[left - 1] + threadPrivateMyVal[left + 1]) * 0.5;
+
+if (left < right) {
+    threadPrivateMyNew[right] = (threadPrivateMyVal[right - 1] + threadPrivateMyVal[right + 1]) * 0.5;
+}
+        \end{lstlisting}
+        Los bordes (\textit{left} y \textit{right}) son los elementos compartidos con los hilos vecinos: el hilo $i-1$ necesita \textit{myNew[left]} y el hilo $i+1$ necesita \textit{myNew[right]} para calcular sus propios interiores. Por eso se calculan antes de avisar que terminaron.
+    \item \textit{\textbf{ph.arrive()}}, señalar sin bloquearse. Simplemente decrementa el contador interno del \textit{Phaser} y devuelve el número de fase actual. Esto indica que terminó de usar los bordes y otros pueden usarlos.
+
+    \item Calcular los elementos interiores (zona difusa).
+        \begin{lstlisting}[language=Java, caption=Calculo de elementos interiores., label={cod:interior}]
+for (int j = left + 1; j <= right - 1; j++) {
+    threadPrivateMyNew[j] = (threadPrivateMyVal[j - 1] + threadPrivateMyVal[j + 1]) * 0.5;
+}
+        \end{lstlisting}
+    Mientras los demás hilos también calculan sus bordes y su interior, este hilo ya está trabajando en su parte interna. Este solapamiento de trabajo es la optimización central: ningún hilo desperdicia ciclos esperando si hay trabajo que no depende de los demás.
+
+    \item \textit{\textbf{ph.awaitAdvance(phase)}}, barrera real. Ahora, se bloquea hasta que todos los hilos hayan llamado \textit{arrive()} (es decir, todos hayan terminado sus bordes). Solo entonces avanza la fase. Esto garantiza que ningún hilo haga el \textit{swap} antes de que todos los bordes del paso actual estén escritos.
+
+    \item Swap de arreglos.
+        \begin{lstlisting}[language=Java, caption=Swap de arreglos., label={cod:swap}]
+double[] temp = threadPrivateMyNew;
+threadPrivateMyNew = threadPrivateMyVal;
+threadPrivateMyVal = temp;
+        \end{lstlisting}
+
+    Se intercambian las referencias locales de cada hilo. Como threadPrivateMyNew y threadPrivateMyVal son variables locales de la lambda, este \textit{swap} es seguro y por tanto, no modifica la referencia original fuera del hilo. En la siguiente iteración, el arreglo recién calculado se convierte en el ``valor actual''.
+
+\end{enumerate}
+
+Finalmente, el hilo principal espera a que todos los hilos de trabajo completen sus $iterations$ iteraciones antes de retornar.
+
+\begin{lstlisting}[language=Java, caption=Espera de completitud del trabajo de los hilos., label={cod:fin4-1}]
+for (int ii = 0; ii < tasks; ii++) {
+    try {
+        threads[ii].join();
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Implementación 2}
+\begin{lstlisting}[language=Java, caption=Primera implementación para la práctica 4., label={cod:pr4-1}]
+public static void runParallelFuzzyBarrier(final int iterations,
+            final double[] myNew, final double[] myVal, final int n,
+            final int tasks) {
+
+        Phaser[] phs = new Phaser[tasks];
+        for(int i=0;i<phs.length;i++){
+            phs[i] = new Phaser(1);
+        }
+
+        Thread[] threads = new Thread[tasks];
+
+        for (int ii = 0; ii < tasks; ii++) {
+            final int i = ii;
+
+            threads[ii] = new Thread(() -> {
+                double[] threadPrivateMyVal = myVal;
+                double[] threadPrivateMyNew = myNew;
+
+                for (int iter = 0; iter < iterations; iter++) {
+                    final int left = i * (n / tasks) + 1;
+                    final int right = (i + 1) * (n / tasks);
+                    
+                    phs[i].arrive();
+
+                    for (int j = left; j <= right; j++) {
+                        threadPrivateMyNew[j] = (threadPrivateMyVal[j - 1]
+                                + threadPrivateMyVal[j + 1]) / 2.0;
+                    }
+//                    System.out.println("Arriving task: "+ i);
+                    
+                    if(i-1>=0){
+//                        System.out.println("Arrived task "+ i +" Waiting for "+ (i-1));
+                        phs[i-1].awaitAdvance(iter);
+                    }
+                    if(i+1<tasks){
+//                        System.out.println("Arrived task "+ i +" Waiting for "+ (i+1));
+                        phs[i+1].awaitAdvance(iter);
+                    }
+
+                    double[] temp = threadPrivateMyNew;
+                    threadPrivateMyNew = threadPrivateMyVal;
+                    threadPrivateMyVal = temp;
+                }
+            });
+            threads[ii].start();
+        }
+
+        for (int ii = 0; ii < tasks; ii++) {
+            try {
+                threads[ii].join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+\end{lstlisting}
+
+\subsection{Resultados de las ejecuciones}
+\subsection{Posibles mejoras}
+
+
+\end{document}
